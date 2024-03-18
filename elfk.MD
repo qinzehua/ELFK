@@ -251,7 +251,7 @@ yum -y localinstall filebeat-7.17.3-x86_64.rpm
 
 ## 修改 filebeat 的配置文件 (监听 stdin)
 
-```
+```python
 (1) 修改配置文件名字
 mv /etc/filebeat/filebeat.yml /etc/filebeat/filebeat.yml-`date +%F`
 
@@ -277,7 +277,7 @@ filebeat -e -c /etc/filebeat/config/01-stdin-to-console.yml
 
 ## 修改 filebeat 的配置文件 (监听指定文件)
 
-```
+```python
 (1) 编辑配置文件
 vi /etc/filebeat/config/02-log-to-console.yml
 
@@ -295,7 +295,7 @@ filebeat -e -c /etc/filebeat/config/02-log-to-console.yml
 
 ## 通用配置
 
-```
+```python
 (1)
 vi /etc/filebeat/config/03-field.yml
 
@@ -321,7 +321,7 @@ output.console:
 
 ## 输出到 elasticsearch
 
-```
+```python
 vi /etc/filebeat/config/04-output-elasticsearch.yml
 
 filebeat.inputs:
@@ -346,7 +346,7 @@ output.elasticsearch:
 
 ## 指定索引名称
 
-```
+```python
 vi /etc/filebeat/config/05-output-elasticsearch.yml
 
 filebeat.inputs:
@@ -372,7 +372,7 @@ output.elasticsearch:
 
 ### 根据 tag， 把日志写入不同索引
 
-```
+```python
 vi /etc/filebeat/config/06-output-elasticsearch.yml
 
 filebeat.inputs:
@@ -411,7 +411,7 @@ setup.template.pattern: "qzh-elk-*"
 
 # 16-ES 的分片和副本及 filebeat 配置
 
-```
+```python
 
 vi /etc/filebeat/config/07-output-elasticsearch.yml
 filebeat.inputs:
@@ -453,7 +453,7 @@ setup.template.settings:
 
 # 17 作业
 
-```
+```python
 (1) 安装nginx
 sudo yum update
 sudo yum install epel-release
@@ -511,8 +511,10 @@ setup.template.settings:
 
 # 02-EFK 架构的 nginx 原生日志收集
 
-```
+```python
+
 vi /etc/filebeat/config/09-nginx-log.yml
+
 filebeat.inputs:
   - type: log
     paths:
@@ -542,7 +544,7 @@ setup.template.settings:
 
 # 03-基于 log 类型收集 nginx 的 json 日志
 
-```
+```python
 (1) nginx log 格式
 log_format qzh_nginx_json '{"@timestamp":"$time_iso8601",'
         '"host":"$server_addr",'
@@ -595,7 +597,7 @@ setup.template.settings:
 
 # 04-filebeat 的内置模块收集 nginx 日志
 
-```
+```python
 (1)
 vi /etc/filebeat/config/11-filebeat-module.yml
 
@@ -664,7 +666,7 @@ cat /softwares/apache-tomcat-10.1.19/logs/localhost_access_log.2024-03-13.txt
 
 ## 配置 filebeat module
 
-```
+```python
 (1) 启动filebeat 内置的 tomcat 日志 解析模块, 关闭nginx 模块
 filebeat -c /etc/filebeat/config/11-filebeat-module.yml modules enable tomcat
 
@@ -708,7 +710,7 @@ filebeat -e -c /etc/filebeat/config/12-filebeat-module.yml
 
 # 08 收集 tomcat 原生日志
 
-```
+```python
 vi /etc/filebeat/config/13-tomcat.yml
 
 filebeat.inputs:
@@ -736,7 +738,7 @@ setup.template.settings:
 
 # 09-filebeat 收集 tomcat json 日志
 
-```
+```python
 (1) 修改配置文件（让tomcat 输出json 格式的日志）
 cp /softwares/apache-tomcat-10.1.19/conf/{server.xml, server.xml-`date +%F`}
 vi /softwares/apache-tomcat-10.1.19/conf/server.xml
@@ -786,7 +788,7 @@ setup.template.settings:
 
 # 11-filebeat 多行匹配案例收集 tomcat
 
-```
+```python
 vi /etc/filebeat/config/15-tomcat-error.yml
 
 filebeat.inputs:
@@ -825,7 +827,7 @@ setup.template.settings:
 
 # 14 nginx 错误日志过滤
 
-```
+```python
 vi /etc/filebeat/config/16-nginx-error-filter.yml
 
 filebeat.inputs:
@@ -869,7 +871,7 @@ setup.template.settings:
 
 # 15 同时收集 nginx tomcat 日志
 
-```
+```python
 vi /etc/filebeat/config/17-nginx-tomcat.yml
 
 filebeat.inputs:
@@ -936,7 +938,7 @@ setup.template.settings:
 
 # 16-filestreamjson 解析
 
-```
+```python
 vi /etc/filebeat/config/18-filestream-json.yml
 
 filebeat.inputs:
@@ -981,7 +983,7 @@ setup.template.settings:
 
 # 17-filestream 的多行匹配问题
 
-```
+```python
 vi /etc/filebeat/config/19-filestream-mutiline.yml
 
 filebeat.inputs:
@@ -1036,7 +1038,7 @@ setup.template.settings:
 - 文件路径加上末尾加上\*号，以防文件没有内容
 - 修改 setup.template.pattern 的时候，有可能这个 pattern 会匹配到多个模板的名字。会引起冲突
 
-```
+```python
 vi 20-system-log.yml
 
 filebeat.inputs:
@@ -1105,7 +1107,7 @@ setup.template.settings:
 
 # 06-将数据写入到 redis 环境
 
-```
+```python
 (1) 安装redis
 vi /etc/redis.conf
 ....
@@ -1150,7 +1152,7 @@ output.redis:
 
 ## 配置
 
-```
+```python
 vi /etc/logstash/conf.d/01-stdin-to-stdout.conf
 
 input {
@@ -1165,7 +1167,7 @@ output {
 
 # 10-logstsh 收集本地文件注意事项
 
-```
+```python
 vi /etc/logstash/conf.d/02-file-input.conf
 
 input {
@@ -1182,7 +1184,7 @@ output {
 
 # 11-logstash 实现日志聚合
 
-```
+```python
 vi /etc/logstash/conf.d/03-tcp.conf
 
 input {
@@ -1200,7 +1202,7 @@ output {
 
 # 12-logstash 基于 http 案例
 
-```
+```python
 vi /etc/logstash/conf.d/04-http.conf
 
 input {
@@ -1222,7 +1224,7 @@ output {
 
 # 14-logstash 和 redis 对接
 
-```
+```python
 vi /etc/logstash/conf.d/05-redis.conf
 
 input {
@@ -1245,7 +1247,7 @@ output {
 
 # 15 filebeat output to logstash
 
-```
+```python
 (1) 配置filebeat
 vi /etc/filebeat/config/23-output-logstash.yml
 filebeat.inputs:
@@ -1275,7 +1277,7 @@ output {
 
 # 18 输出到 es
 
-```
+```python
 vi /etc/logstash/conf.d/08-output-elasticsearch.conf
 
 input {
@@ -1290,5 +1292,133 @@ output {
         hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
         index => "qzh-logstash-%{+YYYY.MM.dd}"
       }
+}
+```
+
+# 03-grok 内置正则
+
+```python
+(1)
+vi /etc/filebeat/config/24-nginx-to-logstash.yml
+
+filebeat.inputs:
+- type: log
+  paths:
+    - /var/log/nginx/*.log*
+
+output.logstash:
+  hosts: ["192.168.200.129:8888"]
+
+(2)
+vi /etc/logstash/conf.d/10-grok-filter.conf
+
+input {
+    beats {
+      type => "beat"
+      port => 8888
+    }
+}
+
+filter {
+    grok {
+        match => {
+            # https://github.com/logstash-plugins/logstash-patterns-core/blob/main/patterns/ecs-v1/httpd
+            # HTTPD_COMMONLOG %{IPORHOST:[source][address]} (?:-|%{HTTPDUSER:[apache][access][user][identity]}) (?:-|%{HTTPDUSER:[user][name]}) \[%{HTTPDATE:timestamp}\] "(?:%{WORD:[http][request][method]} %{NOTSPACE:[url][original]}(?: HTTP/%{NUMBER:[http][version]})?|%{DATA})" (?:-|%{INT:[http][response][status_code]:int}) (?:-|%{INT:[http][response][body][bytes]:int}) "(?:-|%{DATA:[http][request][referrer]})" "(?:-|%{DATA:[user_agent][original]})"
+            # 192.168.200.1 - - [18/Mar/2024:21:00:03 +0800] "GET /poweredby.png HTTP/1.1" 200 368 "http://192.168.200.129/ABC" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" "-"
+            "message" => "%{HTTPD_COMMONLOG}"
+        }
+    }
+}
+
+output {
+    stdout {}
+    elasticsearch  {
+        hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+        index => "qzh-elk-grok-%{+YYYY.MM.dd}"
+    }
+}
+```
+
+# 05-自定义 grok 实战案例
+
+## 案例 1
+
+```python
+(1)
+vi /etc/logstash/conf.d/patterns/1
+
+POSTFIX_QUEUEID [0-9A-F]{10,11}
+
+(2)
+vi /etc/logstash/conf.d/11-grok-custom-filter.conf
+
+input {
+    stdin {}
+}
+
+filter {
+    grok {
+        patterns_dir => ["/etc/logstash/conf.d/patterns"]
+        match => { "message" => "%{SYSLOGBASE} %{POSTFIX_QUEUEID:queue_id}: %{GREEDYDATA:syslog_message}" }
+    }
+}
+
+output {
+    stdout {}
+}
+
+(3) 启动logstash，输入：Jan  1 06:25:43 mailserver14 postfix/cleanup[21403]: BEF25A72965: message-id=<20130101142543.5828399CCAF@mailserver14.example.com>
+
+(4) 结果输出：
+{
+               "pid" => "21403",
+          "queue_id" => "BEF25A72965",
+           "message" => "Jan  1 06:25:43 mailserver14 postfix/cleanup[21403]: BEF25A72965: message-id=<20130101142543.5828399CCAF@mailserver14.example.com>",
+              "host" => "qzh2.abc.com",
+        "@timestamp" => 2024-03-18T14:52:43.616Z,
+         "logsource" => "mailserver14",
+    "syslog_message" => "message-id=<20130101142543.5828399CCAF@mailserver14.example.com>",
+         "timestamp" => "Jan  1 06:25:43",
+          "@version" => "1",
+           "program" => "postfix/cleanup"
+}
+```
+
+## 案例 2
+
+```python
+(1)
+vi /etc/logstash/conf.d/patterns/1
+
+POSTFIX_QUEUEID [0-9A-F]{10,11}
+QZH_ELK_EMAIL [\w.%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}
+(2)
+vi /etc/logstash/conf.d/11-grok-custom-filter.conf
+
+input {
+    stdin {}
+}
+
+filter {
+    grok {
+        patterns_dir => ["/etc/logstash/conf.d/patterns"]
+        match => { "message" => "%{POSTFIX_QUEUEID:queue_id}: message-id=<%{QZH_ELK_EMAIL:user_mail}>" }
+    }
+}
+
+output {
+    stdout {}
+}
+
+(3) 启动logstash，输入：Jan  1 06:25:43 mailserver14 postfix/cleanup[21403]: BEF25A72965: message-id=<20130101142543.5828399CCAF@mailserver14.example.com>
+
+(4) 结果输出：
+{
+      "@version" => "1",
+    "@timestamp" => 2024-03-18T14:55:20.956Z,
+       "message" => "Jan  1 06:25:43 mailserver14 postfix/cleanup[21403]: BEF25A72965: message-id=<20130101142543.5828399CCAF@mailserver14.example.com>",
+     "user_mail" => "20130101142543.5828399CCAF@mailserver14.example.com",
+          "host" => "qzh2.abc.com",
+      "queue_id" => "BEF25A72965"
 }
 ```
