@@ -1468,3 +1468,40 @@ output {
 
 (3) logstash -rf /etc/logstash/conf.d/12-grok-to-es.conf
 ```
+
+# 03-logstash 的 filter 插件 date 实战
+
+```python
+vi /etc/logstash/conf.d/13-beat-grok_date-es.conf
+
+input {
+    beats {
+      type => "beat"
+      port => 8888
+    }
+}
+
+filter {
+    grok {
+        match => {
+            "message" => "%{HTTPD_COMMONLOG}"
+        }
+        remove_field => [ "host", "@version" , "ecs", "tags",  "agent",  "input", "log"]
+    }
+    # 匹配 timestamp 的值的格式为 19/Mar/2024:20:52:25 +0800
+    # 然后覆盖@timestamp 字段的值
+    # kibana 的时间段筛选，默认根据 @timestamp 字段
+    date {
+        match => ["timestamp", "dd/MMM/yyyy:HH:mm:ss Z"],
+        target => "qzh_elk_access_time"
+    }
+}
+
+output {
+    stdout {}
+    elasticsearch  {
+        hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+        index => "qzh-elk-grok-%{+YYYY.MM.dd}"
+    }
+}
+```
