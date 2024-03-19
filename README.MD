@@ -1422,3 +1422,49 @@ output {
       "queue_id" => "BEF25A72965"
 }
 ```
+
+# 06-filter 插件字段 remove_field
+
+# 07-filter 通用字段 add_field 案例
+
+# 08-filebeat 的通用字段案例
+
+```python
+(1)
+filebeat /etc/filebeat/config/24-nginx-to-logstash.yml
+
+(2)
+vi /etc/logstash/conf.d/12-grok-to-es.conf
+
+input {
+    beats {
+      type => "beat"
+      port => 8888
+    }
+}
+
+filter {
+    grok {
+        match => {
+            "message" => "%{HTTPD_COMMONLOG}"
+        }
+        remove_field => [ "agent", "tags", "ecs", "@version" , "input", "log"]
+        add_field => {
+            "elk-clientip" => "clientip ---> %{clientip}"
+            "elk-name" => "dddddddddw"
+        }
+        add_tag => [ "taggedy_tag"]
+    }
+
+}
+
+output {
+     stdout {}
+    elasticsearch  {
+        hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+        index => "qzh-elk-grok-%{+YYYY.MM.dd}"
+    }
+}
+
+(3) logstash -rf /etc/logstash/conf.d/12-grok-to-es.conf
+```
