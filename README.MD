@@ -1505,3 +1505,316 @@ output {
     }
 }
 ```
+
+# 05-geoip 分析客户端的 IP 地理位置实战案例
+
+```
+vi /etc/logstash/conf.d/14-beat-geoip-es.conf
+input {
+    beats {
+      type => "beat"
+      port => 8888
+    }
+}
+
+filter {
+    grok {
+        match => {
+            "message" => "%{HTTPD_COMMONLOG}"
+        }
+        remove_field => [ "host", "@version" , "ecs", "tags",  "agent",  "input", "log"]
+    }
+
+    date {
+        match => ["timestamp", "dd/MMM/yyyy:HH:mm:ss Z"]
+    }
+
+    geoip {
+        source => "clientip"
+        fields => ["city_name", "country_name", "ip"] # 从geo 信息中提取关键字段
+        target => "qzh_elk_geo" # 存出上面提取的字段
+    }
+}
+
+output {
+    stdout {}
+    elasticsearch  {
+        hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+        index => "qzh-elk-geoip-%{+YYYY.MM.dd}"
+    }
+}
+```
+
+# 06-使用 logstash 分析客户的设备信息
+
+```python
+(1) 生成json 格式的nginx日志
+
+
+vi /etc/nginx/nginx.conf
+
+    #  log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+    #                   '$status $body_bytes_sent "$http_referer" '
+    #                   '"$http_user_agent" "$http_x_forwarded_for"';
+
+    #  access_log  /var/log/nginx/access.log  main;
+    log_format qzh_nginx_json '{"qzh_timestamp":"$time_iso8601",' #日志访问时间不要用@timestamp，避免于logstash 中的字段冲突
+
+        '"host":"$server_addr",'
+        '"clientip":"$remote_addr",'
+        '"size":$body_bytes_sent,'
+        '"responsetime":"$request_time",'
+        '"upstreamtime":"$upstream_response_time",'
+        '"upstreamhost":"$upstream_addr",'
+        '"http_host":"$host",'
+        '"domain":"$host",'
+        '"xff":"$http_x_forwarded_for",'
+        '"referer":"$http_referer",'
+        '"tcp_xff":"$http_x_real_ip",'
+        '"http_user_agent":"$http_user_agent",'
+        '"status":"$status"}';
+
+    access_log /var/log/nginx/access.log qzh_nginx_json;
+
+（2）
+vi /etc/filebeat/config/25-nginx-to-logstash.yml
+
+filebeat.inputs:
+- type: log
+  paths:
+    - /var/log/nginx/access.log*
+  json.keys_under_root: true # 在filbeat 中把日志字段从 message 字段中 提取到根
+
+output.logstash:
+  hosts: ["192.168.200.129:8888"]
+
+(3) 使用logstash useragent 插件，提取 http_user_agent 字段中的信息
+vi /etc/logstash/conf.d/15-beat-useragent-es.conf
+
+input {
+    beats {
+      type => "beat"
+      port => 8888
+    }
+}
+
+filter {
+    mutate {
+
+        remove_field => [ "host", "@version" , "ecs", "tags", "agent", "input", "log"]
+    }
+
+    # nginx 时间格式 2024-03-20T21:30:25+08:00
+    date {
+        match => ["qzh_timestamp", "yyyy-MM-dd'T'HH:mm:ssZZ"]
+    }
+
+    geoip {
+        source => "clientip"
+        fields => ["city_name", "country_name", "ip"]
+        target => "qzh_elk_geo"
+    }
+
+    useragent {
+        source => "http_user_agent"
+        target => "qzh_elk_useragent"
+    }
+}
+
+output {
+    stdout {}
+    elasticsearch  {
+        hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+        index => "qzh-elk-useragent-%{+YYYY.MM.dd}"
+    }
+}
+```
+
+# 07-使用 python 脚本生成测试数据
+
+```
+vi generate_log.py
+```
+
+```python
+
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*
+# @author : oldboyedu-linux80
+
+import datetime
+import random
+import logging
+import time
+import sys
+
+LOG_FORMAT = "%(levelname)s %(asctime)s [com.oldboyedu.%(module)s] - %(message)s "
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+# 配置root的logging.Logger实例的基本配置
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=DATE_FORMAT, filename=sys.argv[1], filemode='a')
+actions = ["浏览⻚⾯", "评论商品", "加⼊收藏", "加⼊购物⻋", "提交订单", "使⽤优惠券", "领取优惠券", "搜索", "查看订单", "付款", "清空购物⻋"]
+while True:
+  time.sleep(random.randint(1, 5))
+  user_id = random.randint(1, 10000)
+  # 对⽣成的浮点数保留2位有效数字.
+  price = round(random.uniform(15000, 30000),2)
+  action = random.choice(actions)
+  svip = random.choice([0,1])
+  logging.info("DAU|{0}|{1}|{2}|{3}".format(user_id, action,svip,price))
+
+```
+
+```
+nohup python generate_log.py  /tmp/app.log &>/dev/null &
+```
+
+```
+tail -100f /tem/app.log
+```
+
+# 08-mutate 组件常用字段介绍
+
+```
+(1) python generate_log.py
+(2) vi /etc/filebeat/config/26-apps-to-logstash.yml
+
+filebeat.inputs:
+- type: log
+  paths:
+    - /tmp/app.log*
+
+output.logstash:
+  hosts: ["192.168.200.129:8888"]
+
+
+(3) vi /etc/logstash/conf.d/17-beat-mutate-es.conf
+
+input {
+    beats {
+      type => "beat"
+      port => 8888
+    }
+}
+
+filter {
+    mutate {
+        remove_field => ["@timestamp", "host", "@version" , "ecs", "tags", "agent", "input", "log"]
+
+        split => {
+            message =>  "|"
+        }
+
+        add_field => {
+            "user_id" => "%{[message][1]}"
+            "action" => "%{[message][2]}"
+            "svip" => "%{[message][3]}"
+            "price" => "%{[message][4]}"
+        }
+
+        strip => ["price"]
+    }
+    mutate {
+
+        convert => {
+            "user_id" => "integer"
+             "svip" => "boolean"
+             "price" => "float"
+        }
+    }
+}
+
+output {
+    stdout {}
+    elasticsearch  {
+        hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+        index => "qzh-elk-mutate-%{+YYYY.MM.dd}"
+    }
+}
+```
+
+# 11-ELFK 架构多 if 分支判断多综合案例
+
+```
+vi /etc/logstash/conf.d/18-beats_tcp-filter-es.conf
+
+input {
+    beats {
+      type => "beat"
+      port => 8888
+    }
+    tcp {
+        type => "tcp"
+        port => 9999
+    }
+}
+
+filter {
+    mutate {
+        add_field => { "qzh_elk_common_data" => "This is a common field for all kind of input logs" }
+    }
+
+    if [type] == "beat" {
+        mutate {
+            remove_field => [ "host", "@version" , "ecs", "tags", "agent", "input", "log"]
+        }
+
+        geoip {
+            source => "clientip"
+            fields => ["city_name", "country_name", "ip"]
+            target => "qzh_elk_geoip"
+        }
+
+        useragent {
+            source => "http_user_agent"
+            target => "qzh_elk_useragent"
+        }
+
+        date {
+            match => ["qzh_timestamp", "yyyy-MM-dd'T'HH:mm:ssZZ"]
+        }
+    }
+
+    if [type] == "tcp" {
+        mutate {
+            remove_field => [ "port", "host", "@version"]
+        }
+
+       mutate {
+            split => {
+                message => "|"
+            }
+            add_field => {
+                "user_id" => "%{[message][1]}"
+                "action" => "%{[message][2]}"
+                "svip" => "%{[message][3]}"
+                "price" => "%{[message][4]}"
+            }
+            remove_field => [ "message" ]
+       }
+       mutate {
+            strip => ["svip", "price"]
+            convert => {
+                "user_id" => "integer"
+                "svip" => "boolean"
+                "price" => "float"
+            }
+       }
+
+    }
+}
+
+output {
+    stdout {}
+    if [type] == "beat" {
+        elasticsearch  {
+            hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+            index => "qzh-elk-beat-%{+YYYY.MM.dd}"
+        }
+    }else if [type] == "tcp" {
+        elasticsearch  {
+            hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+            index => "qzh-elk-tcp-%{+YYYY.MM.dd}"
+        }
+    }
+}
+```
