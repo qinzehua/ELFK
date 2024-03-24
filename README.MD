@@ -1971,3 +1971,185 @@ output {
     }
 }
 ```
+
+# 10-ES 集群 oracle JDK 环境部署
+
+```
+(1) wget https://download.oracle.com/java/22/latest/jdk-22_linux-x64_bin.tar.gz
+(2) tar xf jdk-22_linux-x64_bin.tar.gz -C /softwares
+(3) cd /softwares && ln -sv jdk-22 jdk
+(4) cat > /etc/profile.d/qzh_elk.sh <<'EOF'
+ #!/bin/bash
+ export JAVA_HOME=/softwares/jdk
+ export PATH=$PATH:$JAVA_HOME/bin
+ EOF
+ source /etc/profile.d/qzh_elk.sh
+(5) java -version
+(6) 同步到其他节点
+
+data_rsync.sh /soft/jdk-22
+data_rsync.sh /soft/jdk
+data_rsync.sh /etc/profile.d/qzh_elk.sh
+
+(7) 其他节点执行
+source /etc/profile.d/qzh_elk.sh
+java -version
+
+```
+
+# 11-ES 单节点及排错故障案例
+
+```
+(1) wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.17.13-linux-x86_64.tar.gz
+(2)  tar xf elasticsearch-7.17.3-linux-x86_64.tar.gz -C /softwares/
+(3)  cd /softwares/ && ln -sv elasticsearch-7.17.3 es
+(4) cat >> /etc/profile.d/qzh_elk.sh <<'EOF'
+ export ES_HOME=/softwares/es
+ export PATH=$PATH:$ES_HOME/bin
+ EOF
+
+ source /etc/profile.d/qzh_elk.sh
+
+(5) useradd qzh_elk
+(6) chown qzh_elk:qzh_elk -R /softwares/elasticsearch-7.17.3/
+(8) vim /softwares/es/config/elasticsearch.yml
+...
+ cluster.name: elk_cluster
+ network.host: 0.0.0.0
+ discovery.seed_hosts: ["192.168.200.128"]
+ cluster.initial_master_nodes: ["192.168.200.128"]
+...
+
+(9) cat > /etc/security/limits.d/elk.conf <<'EOF'
+ *       soft    nofile     65535
+ *       hard    nofile    131070
+ EOF
+
+(10) cat > /etc/sysctl.d/elk.conf <<'EOF'
+ vm.max_map_count = 262144
+ EOF
+ sysctl -f /etc/sysctl.d/elk.conf
+ sysctl -q vm.max_map_count
+
+(11) su qzh_elk
+(12) elasticsearch
+(13) curl 192.168.200.128:9200/_cat/nodes
+```
+
+# 12-jps,jmap 及 ES 的堆内存大修改
+
+```
+(1)修改堆内存⼤⼩
+su qzh_elk
+vim /oldboyedu/softwares/es/config/jvm.options
+ ...
+ # 堆内存设置不建议超过32G.
+ -Xms256m
+ -Xmx256m
+
+ (2)重启服务
+kill `jps | grep Elasticsearch | awk '{print $1}'`
+elasticsearch
+
+ (3)验证堆内存的⼤⼩
+jmap -heap `jps | grep Elasticsearch | awk '{print $1}'`
+
+```
+
+# 14-ES 的启动脚本编写及排错实战
+
+```
+(1) vi /usr/lib/systemd/system/es.service
+
+[Unit]
+Description=Oldboyedu linux80 ELK
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/softwares/es/bin/elasticsearch -d
+Restart=no
+User=qzh_elk
+Group=qzh_elk
+LimitNOFILE=131070
+[Install]
+WantedBy=multi-user.target
+
+
+(2) systemctl daemon-reload
+(3) systemctl restart es
+```
+
+# 15-ES 集群环境部署及排错实战案例
+
+```
+(1)
+mkdir -pv /qzh_elk/{data,logs}
+install -d /qzh_elk/{data,logs}/es7 -o qzh_elk -g qzh_elk
+
+
+(2) vim /softwares/es/config/elasticsearch.yml
+...
+ path.data: /qzh_elk/data/es7
+ path.logs: /qzh_elk/logs/es7
+ discovery.seed_hosts: ["192.168.200.128", "192.168.200.129", "192.168.200.130"]
+ cluster.initial_master_nodes: ["192.168.200.128", "192.168.200.129", "192.168.200.130"]
+...
+
+(2)
+data_rsync.sh /softwares/elasticsearch-7.17.13/
+data_rsync.sh /softwares/es/
+data_rsync.sh /etc/profile.d/qzh_elk_jdk.sh
+data_rsync.sh /etc/sysctl.d/elk.conf
+data_rsync.sh /etc/security/limits.d/elk.conf
+
+(7) 在其他节点上执行：
+source /etc/profile.d/qzh_elk_jdk.sh
+sysctl -f /etc/sysctl.d/elk.conf
+useradd qzh_elk
+mkdir -pv /qzh_elk/{data,logs}
+install -d /qzh_elk/{data,logs}/es7 -o qzh_elk -g qzh_elk
+systemctl start es
+```
+
+# 16-kibana 环境部署
+
+```
+(1) wget https://artifacts.elastic.co/downloads/kibana/kibana-7.17.3-linux-x86_64.tar.gz
+(2) tar xf kibana-7.17.3-linux-x86_64.tar.gz -C  /softwares/
+(3) cd /softwares/ && ln -sv kibana-7.17.3-linux-x86_64 kibana
+(4) vi /etc/profile.d/elk_kibana.sh
+export KIBANA_HOME=/softwares/kibana
+ export PATH=$PATH:$KIBANA_HOME/bin
+(5) source /etc/profile.d/elk_kibana.sh
+(6) chown qzh_elk:qzh_elk -R /softwares/kibana-7.17.3-linux-x86_64/
+(7) vi /softwares/kibana/config/kibana.yml
+(8) su qzh_elk
+(9) kibana
+```
+
+### kibana service 文件
+
+```
+(1) vi /usr/lib/systemd/system/kibana.service
+
+[Unit]
+Description=Kibana
+After=network.target
+
+[Service]
+Type=simple
+User=qzh_elk
+Group=qzh_elk
+ExecStart=/softwares/kibana/bin/kibana
+Restart=always
+StandardOutput=null
+StandardError=null
+[Install]
+WantedBy=multi-user.target
+
+
+(2) systemctl daemon-reload
+(3) systemctl restart es
+```
+
