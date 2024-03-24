@@ -1818,3 +1818,156 @@ output {
     }
 }
 ```
+
+# 02-作业讲解之 nginx 指定分片数量写入 ES
+
+# 03-作业讲解之 tomcat 指定分片写入 ES 集群
+
+# 04-作业讲解 logstash 的 bug 复现
+
+```
+(1)
+vi /etc/filebeat/config/27-nginx-input.yml
+
+filebeat.inputs:
+  - type: log
+    paths:
+      - /var/log/nginx/access.log*
+    json.keys_under_root: true
+
+output.logstash:
+  hosts: ["192.168.200.129:8888"]
+
+
+
+(2)
+vi /etc/filebeat/config/27-tomcat-input.yml
+
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /softwares/apache-tomcat-10.1.19/logs/*.txt*
+    json.keys_under_root: true
+
+output.logstash:
+  hosts: ["192.168.200.129:8889"]
+
+(3)
+vi /etc/filebeat/config/27-python-input.yml
+
+filebeat.inputs:
+
+  - type: log
+    paths:
+      - /tmp/app.log*
+    tags: ["qzh_python_access"]
+
+output.logstash:
+  hosts: ["192.168.200.129:8890"]
+
+(4)
+vi /etc/logstash/conf.d/20-nginx-tomcat-app-es.conf
+
+input {
+    beats {
+      type => "nginx-beat"
+      port => 8888
+    }
+     beats {
+      type => "tomcat-beat"
+      port => 8889
+    }
+    beats {
+      type => "python-beat"
+      port => 8890
+    }
+}
+
+filter {
+    mutate {
+        add_field => { "qzh_elk_common_data" => "This is a common field for all kind of input logs" }
+    }
+
+    mutate {
+        remove_field => [ "host", "@version", "ecs", "tags", "agent", "input", "log"]
+    }
+
+    if [type] == "nginx-beat" {
+        geoip {
+            source => "clientip"
+            fields => ["city_name", "country_name", "ip"]
+            target => "qzh_elk_geoip"
+        }
+
+        useragent {
+            source => "http_user_agent"
+            target => "qzh_elk_useragent"
+        }
+
+          date {
+                match => ["qzh_timestamp", "yyyy-MM-dd'T'HH:mm:ssZZ"]
+            }
+
+
+    }
+
+    if [type] == "tomcat-beat" {
+          geoip {
+            source => "clientip"
+            fields => ["city_name", "country_name", "ip"]
+            target => "qzh_elk_geoip"
+        }
+
+        useragent {
+            source => "http_user_agent"
+            target => "qzh_elk_useragent"
+        }
+
+
+    }
+
+    if [type] == "python-beat" {
+       mutate {
+            split => {
+                message => "|"
+            }
+            add_field => {
+                "user_id" => "%{[message][1]}"
+                "action" => "%{[message][2]}"
+                "svip" => "%{[message][3]}"
+                "price" => "%{[message][4]}"
+            }
+            remove_field => [ "message" ]
+       }
+       mutate {
+            strip => ["svip", "price"]
+            convert => {
+                "user_id" => "integer"
+                "svip" => "boolean"
+                "price" => "float"
+            }
+       }
+    }
+}
+
+output {
+    stdout {}
+    if [type] == "nginx-beat" {
+        elasticsearch {
+            hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+            index => "qzh_elk_nginx-%{+YYYY.MM.dd}"
+        }
+    }else if [type] == "python-beat" {
+        elasticsearch {
+            hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+            index => "qzh_elk_python-%{+YYYY.MM.dd}"
+        }
+    }else if [type] == "tomcat-beat" {
+         elasticsearch {
+            hosts => ["http://192.168.200.128:9200", "http://192.168.200.129:9200", "http://192.168.200.130:9200"]
+            index => "qzh_elk_tomcat-%{+YYYY.MM.dd}"
+        }
+    }
+}
+```
