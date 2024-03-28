@@ -2153,3 +2153,195 @@ WantedBy=multi-user.target
 (3) systemctl restart es
 ```
 
+# 3.管理索引的 api
+
+## 3.1 查看索引信息
+
+```
+GET http://192.168.200.128:9200/_cat/indices  # 查看全部的索引信息
+GET http://192.168.200.128:9200/_cat/indices?v  # 查看表头信息
+GET http://192.168.200.128:9200/_cat/indices/qzh_elk_postman01?v  # 查看单个索引
+GET http://192.168.200.128:9200/qzh_elk_python-2024.03.23  # 查看单个索引的详细信息
+```
+
+## 3.2 创建索引
+
+```
+PUT http://192.168.200.128:9200/qzh_elk_postman01
+{
+    "settings": {
+        "index" : {
+            "number_of_shards": 3,
+            "number_of_replicas": 0
+        }
+    }
+}
+```
+
+## 3.3 修改索引
+
+```
+PUT http://192.168.200.128:9200/qzh_elk_postman01/_settings
+ {
+    "number_of_replicas": 0
+ }
+```
+
+## 3.4 删除索引
+
+```
+DELETE http://192.168.200.128:9200/qzh_elk_postman01
+```
+
+## 3.5 索引别名
+
+```
+POST http://192.168.200.128:9200/_aliases # 添加索引别名
+{
+    "actions": [
+        {
+            "add": {
+                "index": "qzh_elk_postman01",
+                "alias": "qzh_eli_postman01_aliasssss"
+            }
+        }
+    ]
+}
+
+GET http://192.168.200.128:9200/_aliases # 查看索引别名
+
+POST http://192.168.200.128:9200/_aliases # 删除索引别名
+{
+    "actions": [
+        {
+            "remove": {
+                "index": "qzh_elk_postman01",
+                "alias": "qzh_eli_postman01_aliasssss"
+            }
+        }
+    ]
+}
+
+POST http://192.168.200.128:9200/_aliases # 修改索引别名
+{
+    "actions": [
+        {
+            "remove": {
+                "index": "qzh_elk_postman01",
+                "alias": "qzh_eli_postman01_aliasssss"
+            }
+        },
+         {
+            "add": {
+                "index": "qzh_elk_postman01",
+                "alias": "qzh_eli_postman01_alias_change"
+            }
+        }
+    ]
+}
+
+```
+
+## 3.6 关闭索引
+
+```
+POST http://192.168.200.128:9200/qzh_elk_postman01/_close
+POST http://192.168.200.128:9200/qzh_elk_postman*/_close #通配符
+```
+
+## 3.7 打开索引
+
+```
+POST http://192.168.200.128:9200/qzh_elk_postman01/_open
+POST http://192.168.200.128:9200/qzh_elk_postman01/_open
+```
+
+# 4. 文档管理
+
+## 4.1 创建文档
+
+```
+POST http://192.168.200.128:9200/qzh_elk_postman01/_doc
+{
+    "name": "qzh",
+    "age": 18
+}
+
+POST http://192.168.200.128:9200/qzh_elk_postman01/_doc/1001 # 指定文档id
+{
+    "name": "qzh",
+    "age": 28
+}
+```
+
+## 4.2 查看文档
+
+```
+  GET http://192.168.200.128:9200/qzh_elk_postman01/_search # 查看所有文档
+GET http://192.168.200.128:9200/qzh_elk_postman01/_doc/1001 # 02-查看某个文档（根据id）
+GET http://192.168.200.128:9200/qzh_elk_postman01/_doc/1001 # 03-查看文档是否存在
+```
+
+## 4.3 修改文档
+
+```
+PUT http://192.168.200.128:9200/qzh_elk_postman01/_doc/1001  # 01-全局更新
+{
+    "name": "qzh",
+    "age": 28,
+    "job": "farmer"
+}
+
+PUT http://192.168.200.128:9200/qzh_elk_postman01/_doc/1001/_update # 02-局部更新
+{
+    "doc": {
+        "name": "qqqzh"
+    }
+}
+```
+
+## 4.5 文档的批量操作
+
+```
+POST http://192.168.200.128:9200/_bulk # 01-文档批量创建
+{ "create" : { "_index" : "qzh_elk_postman01" } }
+{ "name" : "zzz" }
+{ "create" : { "_index" : "qzh_elk_postman01" } }
+{ "name" : "qqqq" }
+
+POST http://192.168.200.128:9200/_bulk # 02-文档批量删除
+{ "delete" : { "_index" : "qzh_elk_postman01", "_id" : "EOYWe44Bbjyvf0Vpi5zw" } }
+{ "delete" : { "_index" : "qzh_elk_postman01", "_id" : "EeYWe44Bbjyvf0Vpi5zw" } }
+
+
+POST http://192.168.200.128:9200/_bulk # 03-文档批量修改
+{ "update" : { "_index" : "qzh_elk_postman01", "_id" : "1" } }
+{ "doc" : {"field1": "uuuuu"}}
+{ "update" : { "_index" : "qzh_elk_postman01", "_id" : "2" } }
+{ "doc" : {"field1": "ddddd"}}
+
+POST http://192.168.200.128:9200/_bulk # 03-文档批量查看
+{ "update" : { "_index" : "qzh_elk_postman01", "_id" : "1" } }
+{ "doc" : {"field1": "uuuuu"}}
+{ "update" : { "_index" : "qzh_elk_postman01", "_id" : "2" } }
+{ "doc" : {"field1": "ddddd"}}
+
+
+```
+
+# 5. 使⽤映射⾃定义数据类型
+
+# 5.1 IP
+
+```
+PUT http://192.168.200.128:9200/qzh_elk_postman05
+{
+    "mappings": {
+        "properties": {
+            "ip_addr": {
+                "type": "ip"
+            }
+        }
+    }
+}
+```
