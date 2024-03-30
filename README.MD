@@ -2345,3 +2345,338 @@ PUT http://192.168.200.128:9200/qzh_elk_postman05
     }
 }
 ```
+
+# 3 DSL-全文检索 match 及完全匹配
+
+- 分词查询
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "match": {
+      "brand": "dell"
+    }
+  }
+}
+```
+
+- 分页，查看指定字段
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "match_all": {}
+  },
+  "size": 7,
+  "from": 28,
+  "_source": ["brand", "price"]
+}
+```
+
+- 查询包含指定字段的文档
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "exists": {
+      "field": "title"
+    }
+  }
+}
+```
+
+- 基于指定字段排序
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "match_phrase": {
+      "brand": "苹果"
+    }
+  },
+  "sort": [
+    {
+      "price": {
+        "order": "asc"
+      }
+    }
+  ]
+}
+```
+
+- 多条件查询
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match_phrase": {
+            "brand": "苹果"
+          }
+        },
+        {
+          "match": {
+            "price": "5499"
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "bool": {
+      "must_not": [
+        {
+          "match_phrase": {
+            "brand": "苹果"
+          }
+        },
+        {
+          "match": {
+            "price": "5499"
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match_phrase": {
+            "brand": "苹果"
+          }
+        },
+        {
+          "match": {
+            "price": "3399"
+          }
+        }
+      ]
+    }
+  }
+}
+
+```
+
+- 范围查询-filter
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "brand": "外星人"
+          }
+        }
+      ],
+      "filter": [
+        {
+          "range": {
+            "price": {
+              "gte": 5000,
+              "lte":8000
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+```
+
+- 精确匹配查询
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+
+  "query": {
+    "term": {
+      "price": {
+        "value": "4699"
+      }
+    }
+  }
+}
+```
+
+- 多词搜索
+
+```
+ {
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": {
+                        "title": {
+                            "query": "显示器曲⾯",
+                            "operator": "and"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "highlight": {
+        "pre_tags": [
+            "<h1>"
+        ],
+        "post_tags": [
+            "</h1>"
+        ],
+        "fields": {
+            "title": {}
+        }
+    }
+ }
+```
+
+- 权重
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "brand": {
+              "query": "小苹"
+            }
+          }
+        }
+      ],
+      "should": [
+        {
+          "match_phrase": {
+            "title": {
+              "query": "防水",
+              "boost": 12
+            }
+          }
+        },
+        {
+          "match_phrase": {
+            "title": {
+              "query": "黑色",
+              "boost": 10
+            }
+
+          }
+        }
+      ]
+    }
+  },
+  "highlight": {
+    "fields": {
+      "title": {},
+      "brand": {}
+    }
+  },
+  "_source": ""
+}
+
+```
+
+- 聚合函数
+
+```
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "aggs": {
+    "qzh_brand_group": {
+      "terms": {
+        "field": "brand.keyword",
+        "size": 10
+      }
+    }
+  },
+  "size": 0
+}
+
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "aggs": {
+    "qzh_price_max": {
+      "max": {
+        "field": "price"
+      }
+    }
+  },
+  "size": 0
+}
+
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "aggs": {
+    "qzh_price_min": {
+      "min": {
+        "field": "price"
+      }
+    }
+  },
+  "size": 0
+}
+
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "match_phrase": {
+      "brand": "小米"
+    }
+  },
+  "aggs": {
+    "qzh_price_avg": {
+      "avg": {
+        "field": "price"
+      }
+    }
+  },
+  "size": 0
+}
+
+GET /qzh_elk_goods-2024.03.30/_search
+{
+  "query": {
+    "match_phrase": {
+      "brand": "小米"
+    }
+  },
+  "aggs": {
+    "qzh_price_avg": {
+      "sum": {
+        "field": "price"
+      }
+    }
+  },
+  "size": 0
+}
+
+
+
+```
