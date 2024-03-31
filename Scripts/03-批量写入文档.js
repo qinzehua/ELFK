@@ -4,7 +4,11 @@ const client = new Client({
     'http://192.168.200.128:9200',
     'http://192.168.200.129:9200',
     'http://192.168.200.130:9200'
-  ]
+  ],
+  auth: {
+    username: 'elastic',
+    password: 'your_password'
+  }
 });
 
 async function bulkIndex() {

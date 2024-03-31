@@ -2825,7 +2825,7 @@ POST /_cluster/reroute  # 取消副本分⽚的分配，其副本会 重新初�
 (1) 在每个节点执行
 
 /usr/share/elasticsearch/bin/elasticsearch-certutil cert -out /etc/elasticsearch/elasticsearch-certutil.p12 -pass ""
-chomd 777 /etc/elasticsearch/elasticsearch-certutil.p12
+chmod 777 /etc/elasticsearch/elasticsearch-certutil.p12
 
 (2)
 vi /etc/elasticsearch/elasticsearch.yml
