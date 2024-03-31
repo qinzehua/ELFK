@@ -2818,3 +2818,65 @@ POST /_cluster/reroute  # 取消副本分⽚的分配，其副本会 重新初�
     ]
  }
 ```
+
+# ES 开启 TSL 认证及 postman 插件登录认证
+
+```
+(1) 在每个节点执行
+
+/usr/share/elasticsearch/bin/elasticsearch-certutil cert -out /etc/elasticsearch/elasticsearch-certutil.p12 -pass ""
+chomd 777 /etc/elasticsearch/elasticsearch-certutil.p12
+
+(2)
+vi /etc/elasticsearch/elasticsearch.yml
+
+...
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.keystore.path: /etc/elasticsearch/elasticsearch-certutil.p12
+xpack.security.transport.ssl.truststore.path: /etc/elasticsearch/elasticsearch-certutil.p12
+...
+
+(3) 同步
+data_rsync.sh /etc/elasticsearch/elasticsearch-certutil.p12
+data_rsync.sh /etc/elasticsearch/elasticsearch.yml
+
+(4) 集群重启
+systemctl restart elasticsearch
+
+(5) 生成随机密码
+
+/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto
+
+Changed password for user apm_system
+PASSWORD apm_system = Q0vgAu9ubJpTfIEfjmJH
+
+Changed password for user kibana_system
+PASSWORD kibana_system = VTeowtA1KBXte5yqpzLU
+
+Changed password for user kibana
+PASSWORD kibana = VTeowtA1KBXte5yqpzLU
+
+Changed password for user logstash_system
+PASSWORD logstash_system = z0tq8tAgAc02MkRVpzxO
+
+Changed password for user beats_system
+PASSWORD beats_system = WCaoyeIboYc8SugGhQWp
+
+Changed password for user remote_monitoring_user
+PASSWORD remote_monitoring_user = 7uuCuSK1ixOEwsXzKDH2
+
+Changed password for user elastic
+PASSWORD elastic = LLWyqSxYQpFHEnKpDdOC
+
+(6) 配置kibana
+vi /etc/kibana/kibana.yml
+
+
+elasticsearch.username: "elastic"
+elasticsearch.password: "LLWyqSxYQpFHEnKpDdOC"
+
+(7) 重启kibana
+systemctl restart kibana
+```
