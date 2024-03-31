@@ -2680,3 +2680,141 @@ GET /qzh_elk_goods-2024.03.30/_search
 
 
 ```
+
+# 查看集群健康状态
+
+```
+GET /_cluster/health?level="indices"
+```
+
+# 集群迁移
+
+- 基于 reindex
+
+```
+POST http://192.168.200.128:9200/_reindex  # 不同⼀个集群迁移索引
+{
+    "source": {
+        "index": "qzh_elk_goods",
+        "remote": {
+            "host": "http://192.168.200.131:9200"
+        },
+        "query": {
+            "match_phrase": {
+                "brand": "Dell"
+            }
+        }
+    },
+    "dest": {
+        "index": "qzh_elk_goods_new"
+    }
+ }
+```
+
+- 基于 logstash
+
+```
+input {
+  elasticsearch {
+    index => "qzh_elk_goods"
+    hosts => "http://192.168.200.131:9200"
+    query => '{ "query": { "match_phrase": { "brand": "dell" } }}'
+  }
+}
+
+output {
+  stdout { }
+  elasticsearch {
+    index => "qzh_elk_goods_new"
+    hosts => "192.168.200.128:9200"
+  }
+}
+```
+
+- 修改集群的配置信息
+
+```
+PUT http://192.168200.128200/_cluster/settings
+{
+  "transient": {
+    "cluster.routing.allocation.enable": "none"
+  }
+}
+
+相关参数说明:
+ "cluster.routing.allocation.enable":
+    "all":
+        允许分配 主分片和副本分片  到node上
+    "primaries"
+        仅允许分配 主分⽚ 到node上
+    "new_primaries"
+        仅允许新创的 建索引分配主分⽚。
+    "none":
+        不允许分配任何类型的分片。
+```
+
+- 集群状态
+
+```
+(1)查看集群的状态信息
+GET /_cluster/state
+
+(2)只查看节点信息。
+GET /_cluster/state/nodes
+
+(3)查看nodes,version,routing_table这些信息，并且查看以"qzh_elk*"开头的所有索引
+GET /_cluster/state/nodes,version,routing_table/qzh_elk*
+```
+
+- 集群统计
+
+```
+(1)查看统计信息
+GET /_cluster/stats
+
+(2) node 信息
+GET /_cluster/stats/nodes/zkVOMsPoReiNfPHJSUyQMg
+```
+
+- 集群分片情况
+
+```
+(1)分析teacher索引的0号分⽚未分配的原因。
+GET /_cluster/allocation/explain
+ {
+  "index": "qzh_elk_goods",
+  "shard": 0,
+  "primary": true
+ }
+```
+
+- 集群分⽚重路由
+
+```
+POST /_cluster/reroute  # 将"qzh_elk_goods"索引的0号分⽚从 qzh.abc2.com 节点移动到 qzh.abc1.com 节点。
+{
+    "commands": [
+        {
+            "move": {
+                "index": "qzh_elk_goods",
+                "shard": 0,
+                "from_node": "qzh.abc2.com",
+                "to_node": "qzh.abc1.com"
+            }
+        }
+    ]
+}
+
+POST /_cluster/reroute  # 取消副本分⽚的分配，其副本会 重新初始化分配。
+{
+    "commands": [
+        {
+            "cancel": {
+                "index": "qzh_elk_goods",
+                "shard": 0,
+                "node": "elk101.oldboyedu.com"
+            }
+        }
+    ]
+ }
+```
